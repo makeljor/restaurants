@@ -263,6 +263,6 @@ re_insert_header()
 write_output()
 # print_all()
 # mongo_import()
-mongo_import2()
+# mongo_import2()
 
 print("--- %s seconds ---" % (time.time() - start_time))        # Monitor program runtime
