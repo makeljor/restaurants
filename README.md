@@ -1,4 +1,17 @@
 # restaurants
 Data cleaning and duplicate detection using python on a TSV file
-Round of editing
-Changes
+
+
+Prerequisites
+
+Installing
+
+Contributing
+
+Versioning
+
+Authors
+
+License
+
+Acknowledgments
