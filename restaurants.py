@@ -1,11 +1,18 @@
 import csv
 from datetime import datetime
 import time
-
 import pymongo
 from fuzzywuzzy import fuzz
 from pymongo import MongoClient
-import pprint
+
+
+def download_restaurant_records(file):  # Download the restaurant records into the global variable docs = [] for use throughout the program
+    with open(file, "r") as restaurant_file:
+        reader = csv.reader(restaurant_file, delimiter="\t")
+        next(reader, None)  # skip header line of TSV file
+
+        for row in reader:
+            docs.append(row)
 
 
 def clean_city():  # Data standardization for the city field
@@ -130,8 +137,8 @@ def duplicate_index():  # Determine a duplicate index for all records based on s
 def write_output():  # Write the restaurant records back into a timestamped csv file
     now = datetime.now()
     dt_string = now.strftime("%d-%m-%Y-%H-%M-%S")
-    file = ("restaurant_output-" + dt_string + ".csv")
-    with open(file, "w", newline="") as result_file:
+    output_file = ("restaurant_output-" + dt_string + ".csv")
+    with open(output_file, "w", newline="") as result_file:
         wr = csv.writer(result_file, dialect="excel")
         wr.writerows(docs)
 
@@ -151,8 +158,10 @@ def dub_determination(dub_threshold):  # Determine which records are duplicates 
     for record in docs:
         if record[(len(record) - 1)] >= dub_threshold:
             dubs.append(record[0])
+            record.append(1)
         else:
             unique.append(record[0])
+            record.append(0)
     # print("all dubs:", dubs)                    # all records identified as dubs
     # print("all unique:", unique)                # all records identified as unique
     # print("dub count:", len(dubs))              # identified dubs count
@@ -197,72 +206,50 @@ def result_analysis(lists):
     print("recall:", recall)
     print("average:", average)
 
-
-def download_restaurant_records(file):  # Download the restaurant records into the global variable docs = [] for use throughout the program
-    with open(file, "r") as restaurant_file:
-        reader = csv.reader(restaurant_file, delimiter="\t")
-        next(reader, None)  # skip header line of TSV file
-
-        docs
-        for row in reader:
-            docs.append(row)
-
 def re_insert_header():
-    header = ["id", "name", "address", "city", "phone", "type", "name_match", "address_match", "phone_match", "dub_index"]
+    header = ["id", "name", "address", "city", "phone", "type", "name_match", "address_match", "phone_match", "dub_index", "duplicate"]
     docs.reverse()
     docs.append(header)
     docs.reverse()
 
-def mongo_import():
-    try:
-        connection = MongoClient()
-        print("Connected successfully!!!")
-    except:
-        print("Could not connect to MongoDB")
 
-    # database
-    db = connection.database
-    mongorecs = {}
-    header = ["id", "name", "address", "city", "phone", "type", "name_match", "address_match", "phone_match", "dub_index"]
+def dictionary_conversion():
+    i = 0
     for record in docs:
-        mongorecs[header[0]] = record[0]
-        # res2 = dict(zip(header, record))
-        # res = dict(zip(header[0], record[0]))
-    pp = pprint.PrettyPrinter(indent=4)
-    pp.pprint(mongorecs)
+        mongorecs[str(i)] = record
+        i += 1
 
-    # Created or Switched to collection names: restaurant_collection
-    collection = db.restaurant_collection
 
-    # Insert Data
-    # rec_id1 = collection.insert_one(res)
-
-    # Printing the data inserted
-    # cursor = collection.find()
-    # for record in cursor:
-    #     print(record)
-
-def mongo_import2():
+def mongo_import():
     client = pymongo.MongoClient(
         "mongodb+srv://analytics:analytics-password@clusterjorim-6vzrd.mongodb.net/test?retryWrites=true&w=majority")
     db = client.restaurant
 
+    collection = db.restaurant_collection
 
-start_time = time.time()                            # Monitor program runtime
-docs = []                                           # Global variable for restaurant records, used throughout program
-download_restaurant_records("restaurants_min.tsv")      # Parameter is the external source file for restaurant records
-clean_city()
-clean_phone()
-name_match()
-address_match()
-# city_match()                                      # Yields 100 for almost all cities, irrelevant for detection
-phone_match()
-duplicate_index()
-result_analysis(dub_determination(270))            # Parameter is the duplicate threshold, should be in the 0-300 range
-re_insert_header()
-write_output()
-# print_all()
-# mongo_import()
-# mongo_import2()
+    rec_id1 = collection.insert_one(mongorecs)
 
-print("--- %s seconds ---" % (time.time() - start_time))        # Monitor program runtime
+    # # Printing the data inserted
+    # cursor = collection.find()
+    # for record in cursor:
+    #     print(record)
+
+
+start_time = time.time()                            # Monitor program runtime. 1/2
+docs = []                                           # Global variable for restaurant records, used throughout program.
+mongorecs = {}                                      # Global variable for records in dictionary format, for MongoDB.
+download_restaurant_records("restaurants.tsv")      # Parameter is the external source file for restaurant records. Downloads data from external file to docs. Removes header row.
+clean_city()                                        # Clean up of the city values.
+clean_phone()                                       # Clean up of the phone values.
+name_match()                                        # Determine string similarity of name value.
+address_match()                                     # Determine string similarity of address value.
+# city_match()                                      # Determine string similarity of city value. Yields score of 100 for almost all records, irrelevant for detection. Do not uncomment as will cause error.
+phone_match()                                       # Determine string similarity of phone value.
+duplicate_index()                                   # Determine overall similarity of record.
+result_analysis(dub_determination(270))             # Parameter is the duplicate threshold, should be in the 0-300 range. Flags duplicates. Prints important analytical information about results.
+re_insert_header()                                  # Inserts the header row back into the docs
+# write_output()                                    # Writes the documents back into an output CSV file - used extensively for analysis and optimization
+dictionary_conversion()                             # Convert docs to dictionary for MongoDB
+mongo_import()                                      # Upload documents into MongoDB
+# print_all()                                       # For print checking
+print("--- %s seconds ---" % (time.time() - start_time))        # Monitor program runtime. 2/2
