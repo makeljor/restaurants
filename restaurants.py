@@ -222,7 +222,7 @@ def dictionary_conversion():
 
 def mongo_import():
     client = pymongo.MongoClient(
-        "mongodb+srv://analytics:<password>>@clusterjorim-6vzrd.mongodb.net/test?retryWrites=true&w=majority")
+        "mongodb+srv://analytics:<password>@clusterjorim-6vzrd.mongodb.net/test?retryWrites=true&w=majority")
     db = client.restaurant
 
     collection = db.restaurant_collection
